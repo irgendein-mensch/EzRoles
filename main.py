@@ -9,7 +9,6 @@ load_dotenv()
 
 bot = discord.Bot(
     intents=discord.Intents.all(),
-    debug_guilds=[1053821548663939072],
     activity=discord.CustomActivity("/info | EzRoles.xyz")
 )
 
