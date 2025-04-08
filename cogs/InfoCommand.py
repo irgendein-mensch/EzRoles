@@ -16,7 +16,7 @@ class InfoCommand(commands.Cog):
         embed.set_footer(text="Made by EzRoles.xyz")
         button = discord.ui.Button(label="Website", url="https://ezroles.xyz/")
         button2 = discord.ui.Button(label="Support Server", url="https://discord.gg/7tDv9aAQJj")
-        button3 = discord.ui.Button(label="Add Bot", url="https://discord.com/oauth2/authorize?client_id=1358600279528046602&permissions=268454080&integration_type=0&scope=bot+applications.commands")
+        button3 = discord.ui.Button(label="Add Bot", url="https://discord.com/oauth2/authorize?client_id=1358600279528046602&permissions=268748992&integration_type=0&scope=applications.commands+bot")
         view = discord.ui.View()
         view.add_item(button)
         view.add_item(button2)
