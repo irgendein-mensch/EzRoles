@@ -26,12 +26,12 @@ class ServerLogger(commands.Cog):
                 return
             
             if is_join:
-                title = "EzRoles Bot Joined"
+                title = "EzRoles - Bot Joined"
                 description = f"{guild.name} has added the EzRoles Bot!"
                 color = discord.Color.green()
                 log_message = f"Join notification sent for {guild.name} (ID: {guild.id})"
             else:
-                title = "EzRoles Bot Left"
+                title = "EzRoles - Bot Left"
                 description = f"{guild.name} has removed the EzRoles Bot!"
                 color = discord.Color.red()
                 log_message = f"Leave notification sent for {guild.name} (ID: {guild.id})"
