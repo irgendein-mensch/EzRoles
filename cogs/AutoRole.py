@@ -48,13 +48,13 @@ class AutoRole(commands.Cog):
 
             if not is_new:
                 embed = discord.Embed(
-                    title="EzRoles",
+                    title="EzRoles - Autorole",
                     description=f"{role.mention} is already in the autorole list.",
                     color=discord.Color.yellow()
                 )
             else:
                 embed = discord.Embed(
-                    title="EzRoles",
+                    title="EzRoles - Autorole",
                     description=f"{role.mention} has been added to the autorole list.",
                     color=discord.Color.green()
                 )
@@ -80,13 +80,13 @@ class AutoRole(commands.Cog):
 
             if not was_removed:
                 embed = discord.Embed(
-                    title="EzRoles",
+                    title="EzRoles - Autorole",
                     description=f"{role.mention} was not in the autorole list.",
                     color=discord.Color.yellow()
                 )
             else:
                 embed = discord.Embed(
-                    title="EzRoles",
+                    title="EzRoles - Autorole",
                     description=f"{role.mention} has been removed from the autorole list.",
                     color=discord.Color.green()
                 )
@@ -131,7 +131,7 @@ class AutoRole(commands.Cog):
                     description = "List of autoroles:\n" + "\n".join(role_list)
 
             embed = discord.Embed(
-                title="EzRoles",
+                title="EzRoles - Autorole",
                 description=description,
                 color=discord.Color.blue()
             )
@@ -155,7 +155,7 @@ class AutoRole(commands.Cog):
             count = await self.db.clear_autoroles(ctx.guild.id)
 
             embed = discord.Embed(
-                title="EzRoles",
+                title="EzRoles - Autorole",
                 description=f"All {count} autoroles have been deleted.",
                 color=discord.Color.green()
             )
@@ -206,7 +206,7 @@ class AutoRole(commands.Cog):
             if roles_to_add:
                 try:
                     await member.add_roles(*roles_to_add, reason="AutoRole")
-                    logger.info(f"Auto-roles added to {member.display_name}: {', '.join([r.name for r in roles_to_add])}")
+                    logger.info(f"Autoroles added to {member.display_name}: {', '.join([r.name for r in roles_to_add])}")
                 except discord.Forbidden:
                     logger.error(f"No permission to add roles to {member.display_name}")
                 except discord.HTTPException as e:
