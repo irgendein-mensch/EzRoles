@@ -9,19 +9,127 @@ class InfoCommand(commands.Cog):
     @discord.slash_command(name="info", description="Get information about the bot.")
     async def info(self, ctx: discord.ApplicationContext):
         embed = discord.Embed(
-            title="EzRoles Bot",
-            description="EzRoles.xyz is a free Discord bot that helps you manage your server's roles easily.",
+            title="📌 EzRoles Bot – General Info",
+            description=(
+                "EzRoles.xyz is a free open-source Discord bot that helps you manage your server's roles easily.\n\n"
+                "**Current Features:**\n"
+                "• AutoRoles - Automatically assign roles to new members\n"
+                "• StickyRoles - Restore roles when users rejoin\n"
+                "• RoleBackup - Backup and restore your server's role setup\n\n"
+                "⚠️ **Note:** This bot is still under active development. More features will be added soon!\n"
+                "🔹 **Open Source:** You can contribute on [GitHub](https://github.com/irgendein-mensch/EzRoles)"
+            ),
             color=discord.Color.greyple()
         )
-        embed.set_footer(text="Made by EzRoles.xyz")
-        button = discord.ui.Button(label="Website", url="https://ezroles.xyz/")
-        button2 = discord.ui.Button(label="Support Server", url="https://discord.gg/7tDv9aAQJj")
-        button3 = discord.ui.Button(label="Add Bot", url="https://discord.com/oauth2/authorize?client_id=1358600279528046602&permissions=268748992&integration_type=0&scope=applications.commands+bot")
-        view = discord.ui.View()
-        view.add_item(button)
-        view.add_item(button2)
-        view.add_item(button3)
+        embed.add_field(
+            name="</info:1358620828563931339>",
+            value="🔹 *Shows this information panel with all bot features and commands.*", inline=False)
+
+        view = CategoryChoice()
         await ctx.respond(embed=embed, view=view, ephemeral=True)
+
+
+class CategoryChoice(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+        self.add_item(discord.ui.Button(label="Website", url="https://ezroles.xyz/"))
+        self.add_item(discord.ui.Button(label="Support Server", url="https://discord.gg/7tDv9aAQJj"))
+        self.add_item(discord.ui.Button(label="Add Bot", url="https://discord.com/oauth2/authorize?client_id=1358600279528046602&permissions=268748992&integration_type=0&scope=applications.commands+bot"))
+        self.add_item(CategorySelect())
+
+
+class CategorySelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="EzRoles", description="General informations", value="category_0"),
+            discord.SelectOption(label="AutoRoles", description="Automatically assign roles", value="category_1"),
+            discord.SelectOption(label="StickyRoles", description="Reassign roles when users rejoin", value="category_2"),
+            discord.SelectOption(label="RoleBackup", description="Backup and restore roles", value="category_3")
+        ]
+        super().__init__(placeholder="Choose a category...", min_values=1, max_values=1, options=options, custom_id="category_select")
+
+    async def callback(self, interaction: discord.Interaction):
+        value = self.values[0]
+
+        if value == "category_0":
+            embed = discord.Embed(
+                title="📌 EzRoles – General Info",
+                description=(
+                    "EzRoles.xyz is a free open-source Discord bot that helps you manage your server's roles easily.\n\n"
+                    "**Current Features:**\n"
+                    "• AutoRoles - Automatically assign roles to new members\n"
+                    "• StickyRoles - Restore roles when users rejoin\n"
+                    "• RoleBackup - Backup and restore your server's role setup\n\n"
+                    "⚠️ **Note:** This bot is still under active development. More features will be added soon!\n"
+                    "🔹 **Open Source:** You can contribute on [GitHub](https://github.com/irgendein-mensch/EzRoles)"
+                ),
+                color=discord.Color.greyple()
+            )
+            embed.add_field(
+                name="</info:1358620828563931339>",
+                value="🔹 *Shows this information panel with all bot features and commands.*", inline=False)
+
+        elif value == "category_1":
+            embed = discord.Embed(
+                title="🎯 AutoRoles",
+                description="Automatically assign roles to new members when they join your server.",
+                color=discord.Color.green()
+            )
+            embed.add_field(
+                name="</autorole add:1358891606752760104>",
+                value="🔹 *Adds a role to be automatically assigned to new members. The bot must have permission to manage this role.*", inline=False)
+            embed.add_field(
+                name="</autorole remove:1358891606752760104>",
+                value="🔹 *Removes a role from the auto-role list so it won't be assigned to new members anymore.*", inline=False)
+            embed.add_field(
+                name="</autorole list:1358891606752760104>",
+                value="🔹 *Lists all roles that are currently set to be automatically assigned to new members.*", inline=False)
+            embed.add_field(
+                name="</autorole clear:1358891606752760104>",
+                value="🔹 *Clears all auto-role settings for this server (requires administrator permissions).*", inline=False)
+
+        elif value == "category_2":
+            embed = discord.Embed(
+                title="📌 StickyRoles",
+                description="Automatically restore roles when users rejoin your server.",
+                color=discord.Color.orange()
+            )
+            embed.add_field(
+                name="</stickyroles manage:1358950226072834271>",
+                value="🔹 *Enable or disable the StickyRoles feature for this server (requires administrator permissions).*", inline=False)
+            embed.add_field(
+                name="</stickyroles status:1358950226072834271>",
+                value="🔹 *Check if StickyRoles are currently enabled for this server.*", inline=False)
+            embed.add_field(
+                name="</stickyroles clear:1358950226072834271>",
+                value="🔹 *Clear all stored sticky roles data for this server (requires administrator permissions).*", inline=False)
+
+        elif value == "category_3":
+            embed = discord.Embed(
+                title="💾 RoleBackup",
+                description="Backup and restore your server's complete role setup including permissions, colors and hierarchy.",
+                color=discord.Color.blue()
+            )
+            embed.add_field(
+                name="</backup create:1359678345230418071>",
+                value="🔹 *Create a new backup of all current server roles (excluding @everyone).*", inline=False)
+            embed.add_field(
+                name="</backup restore:1359678345230418071>",
+                value="🔹 *Restore roles from a previously created backup. Will recreate missing roles and update existing ones.*", inline=False)
+            embed.add_field(
+                name="</backup delete:1359678345230418071>",
+                value="🔹 *Delete the stored backup for this server.*", inline=False)
+            embed.add_field(
+                name="</backup show:1359678345230418071>",
+                value="🔹 *Show details about the current backup including creation date and included roles.*", inline=False)
+            embed.add_field(
+                name="⚠️ Important Note",
+                value="The bot can only restore roles that are **below its highest role** in the hierarchy and for which it has **manage roles permission**.", 
+                inline=False)
+
+        embed.set_footer(text="Made by EzRoles.xyz")
+        await interaction.response.edit_message(embed=embed, view=self.view)
 
 
 def setup(bot: discord.Bot):
