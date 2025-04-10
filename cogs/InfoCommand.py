@@ -34,7 +34,7 @@ class CategoryChoice(discord.ui.View):
         super().__init__(timeout=None)
 
         self.add_item(discord.ui.Button(label="Website", url="https://ezroles.xyz/"))
-        self.add_item(discord.ui.Button(label="Support Server", url="https://discord.gg/7tDv9aAQJj"))
+        self.add_item(discord.ui.Button(label="Support Server", url="https://discord.gg/soulshine"))
         self.add_item(discord.ui.Button(label="Add Bot", url="https://discord.com/oauth2/authorize?client_id=1358600279528046602&permissions=268748992&integration_type=0&scope=applications.commands+bot"))
         self.add_item(CategorySelect())
 
