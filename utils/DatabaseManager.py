@@ -2,6 +2,7 @@ import aiosqlite
 import os
 import logging
 import json
+from datetime import datetime
 
 logger = logging.getLogger("database")
 
@@ -11,7 +12,6 @@ class DatabaseManager:
         self.db_type = os.path.basename(db_path).split('.')[0]
         
     async def setup(self):
-        """Initialize the database with appropriate tables based on the database type"""
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         
         async with aiosqlite.connect(self.db_path) as db:
@@ -43,10 +43,19 @@ class DatabaseManager:
                         PRIMARY KEY (guild_id, user_id)
                     )
                 ''')
+            elif self.db_type == "rolebackup":
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS role_backups (
+                        guild_id INTEGER PRIMARY KEY,
+                        created_by INTEGER,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        roles_data TEXT
+                    )
+                ''')
             
             await db.commit()
-            logger.info(f"Database {self.db_path} setup complete")
 
+    
     async def add_autorole(self, guild_id, role_id, author_id):
         if self.db_type != "autorole":
             logger.error(f"Attempted to use autorole method on {self.db_type} database")
@@ -169,7 +178,6 @@ class DatabaseManager:
             return bool(result[0]) if result else False
             
     async def save_member_roles(self, guild_id, user_id, role_ids):
-        """Save role IDs for a member when they leave the server."""
         if self.db_type != "stickyroles":
             logger.error(f"Attempted to use stickyroles method on {self.db_type} database")
             return False
@@ -221,3 +229,98 @@ class DatabaseManager:
             )
             await db.commit()
             return cursor.rowcount
+    
+    
+    async def save_role_backup(self, guild_id, user_id, roles_data):
+        if self.db_type != "rolebackup":
+            logger.error(f"Attempted to use rolebackup method on {self.db_type} database")
+            return False
+        
+        roles_json = json.dumps(roles_data)
+        
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                await db.execute(
+                    """
+                    INSERT OR REPLACE INTO role_backups
+                    (guild_id, created_by, created_at, roles_data)
+                    VALUES (?, ?, CURRENT_TIMESTAMP, ?)
+                    """,
+                    (guild_id, user_id, roles_json)
+                )
+                await db.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error saving role backup: {e}")
+            return False
+    
+    async def backup_exists(self, guild_id):
+        if self.db_type != "rolebackup":
+            logger.error(f"Attempted to use rolebackup method on {self.db_type} database")
+            return False
+        
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                cursor = await db.execute(
+                    "SELECT 1 FROM role_backups WHERE guild_id = ?",
+                    (guild_id,)
+                )
+                result = await cursor.fetchone()
+                return result is not None
+        except Exception as e:
+            logger.error(f"Error checking if backup exists: {e}")
+            return False
+    
+    async def get_role_backup(self, guild_id):
+        if self.db_type != "rolebackup":
+            logger.error(f"Attempted to use rolebackup method on {self.db_type} database")
+            return None
+        
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute(
+                    """
+                    SELECT guild_id, created_by, created_at, roles_data
+                    FROM role_backups
+                    WHERE guild_id = ?
+                    """,
+                    (guild_id,)
+                )
+                result = await cursor.fetchone()
+                
+                if not result:
+                    return None
+                
+                try:
+                    roles_data = json.loads(result['roles_data'])
+                    return {
+                        'guild_id': result['guild_id'],
+                        'created_by': result['created_by'],
+                        'created_at': result['created_at'],
+                        'roles': roles_data
+                    }
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to decode roles JSON for guild {guild_id}")
+                    return None
+        except Exception as e:
+            logger.error(f"Error getting role backup: {e}")
+            return None
+    
+    async def delete_role_backup(self, guild_id):
+        if self.db_type != "rolebackup":
+            logger.error(f"Attempted to use rolebackup method on {self.db_type} database")
+            return False
+        
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                cursor = await db.execute(
+                    "DELETE FROM role_backups WHERE guild_id = ?",
+                    (guild_id,)
+                )
+                await db.commit()
+                success = cursor.rowcount > 0
+                return success
+        except Exception as e:
+            logger.error(f"Error deleting role backup: {e}")
+            return False
