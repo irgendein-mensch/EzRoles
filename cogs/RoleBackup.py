@@ -11,7 +11,7 @@ class RoleBackup(commands.Cog):
         self.logger = get_logger("RoleBackup")
         self.db = DatabaseManager("database/rolebackup.db")
 
-    backup = SlashCommandGroup("backup", "Manage role backup.")
+    backup = SlashCommandGroup("backup", "Manage role backup.", default_member_permissions=discord.Permissions(administrator=True))
     
     @commands.Cog.listener()
     async def on_ready(self):

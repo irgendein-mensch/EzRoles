@@ -12,7 +12,7 @@ class StickyRoles(commands.Cog):
         self.db = DatabaseManager("database/stickyroles.db")
         bot.loop.create_task(self.db.setup())
 
-    stickyroles = SlashCommandGroup("stickyroles", "Manage sticky roles.")
+    stickyroles = SlashCommandGroup("stickyroles", "Manage sticky roles.", default_member_permissions=discord.Permissions(administrator=True))
     
     @stickyroles.command(name="manage", description="Enable or disable the Sticky Roles feature for this server.")
     @discord.default_permissions(administrator=True)

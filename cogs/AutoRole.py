@@ -35,7 +35,7 @@ class AutoRole(commands.Cog):
 
         return True
 
-    autorole = SlashCommandGroup("autorole", "Manage autoroles.")
+    autorole = SlashCommandGroup("autorole", "Manage autoroles.", default_member_permissions=discord.Permissions(administrator=True))
 
     @autorole.command(name="add", description="Add a role to the autorole list.")
     @discord.default_permissions(manage_roles=True)
