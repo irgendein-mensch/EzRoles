@@ -54,6 +54,9 @@ class RoleBackup(commands.Cog):
             if role.is_default():
                 continue
                 
+            if role.tags and hasattr(role.tags, 'bot_id'):
+                continue
+                
             role_data = {
                 "id": role.id,
                 "name": role.name,
@@ -70,7 +73,7 @@ class RoleBackup(commands.Cog):
         if success:
             embed = discord.Embed(
                 title="EzRoles - Role Backup",
-                description=f"Backup created successfully with {len(roles_data)} roles!",
+                description=f"Backup created successfully with {len(roles_data)} roles! (Bot roles excluded)",
                 color=discord.Color.green()
             )
         else:
@@ -147,6 +150,10 @@ class RoleBackup(commands.Cog):
             for role_data in backup_data['roles']:
                 role_id = role_data['id']
                 
+                current_role = current_roles.get(role_id)
+                if current_role and current_role.tags and hasattr(current_role.tags, 'bot_id'):
+                    continue
+                
                 if role_id in current_roles:
                     try:
                         await current_roles[role_id].edit(
@@ -177,6 +184,9 @@ class RoleBackup(commands.Cog):
             for role_data in sorted(backup_data['roles'], key=lambda r: r['position'], reverse=True):
                 role_id = role_data['id']
                 if role_id in current_roles:
+                    if current_roles[role_id].tags and hasattr(current_roles[role_id].tags, 'bot_id'):
+                        continue
+                        
                     try:
                         if current_roles[role_id].position != role_data['position']:
                             await current_roles[role_id].edit(position=role_data['position'])
@@ -190,7 +200,7 @@ class RoleBackup(commands.Cog):
                     f"✅ {roles_restored} roles created\n"
                     f"🔄 {roles_updated} roles updated\n"
                     f"❌ {roles_failed} roles failed\n\n"
-                    f"ℹ️ Note: The bot can only manage roles **below its highest role** and for which it has sufficient permissions."
+                    f"ℹ️ Note: The bot can only manage roles **below its highest role**, for which it has sufficient permissions. Bot roles are excluded automatically."
                 ),
                 color=discord.Color.green()
             )

@@ -13,6 +13,16 @@ class AutoRole(commands.Cog):
         bot.loop.create_task(self.db.setup())
 
     async def check_role_hierarchy(self, ctx: discord.ApplicationContext, role: discord.Role) -> bool:
+        if role.tags and hasattr(role.tags, 'bot_id'):
+            embed = discord.Embed(
+                title="EzRoles - Error",
+                description=f"I cannot manage {role.mention} because it belongs to a bot. Bot roles cannot be assigned to users.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text="Made by EzRoles.xyz")
+            await ctx.respond(embed=embed, ephemeral=True)
+            return False
+
         if ctx.guild.me.top_role <= role:
             embed = discord.Embed(
                 title="EzRoles - Error",
@@ -119,6 +129,9 @@ class AutoRole(commands.Cog):
                 for role_id in role_ids:
                     role = ctx.guild.get_role(role_id)
                     if role:
+                        if role.tags and hasattr(role.tags, 'bot_id'):
+                            continue
+                            
                         role_list.append(role.mention)
                         valid_role_ids.append(role_id)
 
@@ -191,6 +204,9 @@ class AutoRole(commands.Cog):
                 role = member.guild.get_role(role_id)
 
                 if not role:
+                    continue
+                
+                if role.tags and hasattr(role.tags, 'bot_id'):
                     continue
 
                 valid_role_ids.append(role_id)

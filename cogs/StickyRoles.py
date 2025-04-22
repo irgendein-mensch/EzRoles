@@ -86,7 +86,17 @@ class StickyRoles(commands.Cog):
             if member.bot:
                 return
                 
-            role_ids = [role.id for role in member.roles if role.id != member.guild.default_role.id]
+            role_ids = []
+            for role in member.roles:
+                if role.id != member.guild.default_role.id:
+                    bot_role = False
+                    for bot_member in member.guild.members:
+                        if bot_member.bot and bot_member.id == role.tags.bot_id if role.tags and hasattr(role.tags, 'bot_id') else False:
+                            bot_role = True
+                            break
+                    
+                    if not bot_role:
+                        role_ids.append(role.id)
             
             if not role_ids:
                 return
@@ -118,6 +128,9 @@ class StickyRoles(commands.Cog):
                 role = member.guild.get_role(role_id)
                 
                 if not role:
+                    continue
+                
+                if role.tags and hasattr(role.tags, 'bot_id'):
                     continue
                     
                 if member.guild.me.top_role > role and member.guild.me.guild_permissions.manage_roles:
