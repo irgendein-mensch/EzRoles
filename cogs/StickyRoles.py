@@ -12,6 +12,9 @@ class StickyRoles(commands.Cog):
         self.db = DatabaseManager("database/stickyroles.db")
         bot.loop.create_task(self.db.setup())
 
+    def is_bot_managed_role(self, role: discord.Role) -> bool:
+        return role.tags is not None and role.tags.is_bot_managed()
+
     stickyroles = SlashCommandGroup("stickyroles", "Manage sticky roles.", default_member_permissions=discord.Permissions(administrator=True))
     
     @stickyroles.command(name="manage", description="Enable or disable the Sticky Roles feature for this server.")
@@ -89,13 +92,7 @@ class StickyRoles(commands.Cog):
             role_ids = []
             for role in member.roles:
                 if role.id != member.guild.default_role.id:
-                    bot_role = False
-                    for bot_member in member.guild.members:
-                        if bot_member.bot and bot_member.id == role.tags.bot_id if role.tags and hasattr(role.tags, 'bot_id') else False:
-                            bot_role = True
-                            break
-                    
-                    if not bot_role:
+                    if not self.is_bot_managed_role(role):
                         role_ids.append(role.id)
             
             if not role_ids:
@@ -130,7 +127,7 @@ class StickyRoles(commands.Cog):
                 if not role:
                     continue
                 
-                if role.tags and hasattr(role.tags, 'bot_id'):
+                if self.is_bot_managed_role(role):
                     continue
                     
                 if member.guild.me.top_role > role and member.guild.me.guild_permissions.manage_roles:

@@ -12,8 +12,11 @@ class AutoRole(commands.Cog):
         self.db = DatabaseManager("database/autorole.db")
         bot.loop.create_task(self.db.setup())
 
+    def is_bot_managed_role(self, role: discord.Role) -> bool:
+        return role.tags is not None and role.tags.is_bot_managed()
+
     async def check_role_hierarchy(self, ctx: discord.ApplicationContext, role: discord.Role) -> bool:
-        if role.tags and hasattr(role.tags, 'bot_id'):
+        if self.is_bot_managed_role(role):
             embed = discord.Embed(
                 title="EzRoles - Error",
                 description=f"I cannot manage {role.mention} because it belongs to a bot. Bot roles cannot be assigned to users.",
@@ -45,14 +48,7 @@ class AutoRole(commands.Cog):
 
         return True
 
-    autorole = SlashCommandGroup("autorole", "Manage autoroles.", default_member_permissions=discord.Permissions(administrator=True))
-
-    @autorole.command(name="add", description="Add a role to the autorole list.")
-    @discord.default_permissions(manage_roles=True)
-    async def add(self, ctx: discord.ApplicationContext, role: discord.Role):
-        if not await self.check_role_hierarchy(ctx, role):
-            return
-
+    async def add_autorole(self, ctx: discord.ApplicationContext, role: discord.Role):
         try:
             is_new = await self.db.add_autorole(ctx.guild.id, role.id, ctx.author.id)
 
@@ -70,7 +66,7 @@ class AutoRole(commands.Cog):
                 )
 
             embed.set_footer(text="Made by EzRoles.xyz")
-            await ctx.respond(embed=embed, ephemeral=True)
+            return embed
 
         except Exception as e:
             logger.error(f"Error adding role: {e}")
@@ -80,7 +76,56 @@ class AutoRole(commands.Cog):
                 color=discord.Color.red()
             )
             embed.set_footer(text="Made by EzRoles.xyz")
-            await ctx.respond(embed=embed, ephemeral=True)
+            return embed
+
+    autorole = SlashCommandGroup("autorole", "Manage autoroles.", default_member_permissions=discord.Permissions(administrator=True))
+
+    @autorole.command(name="add", description="Add a role to the autorole list.")
+    @discord.default_permissions(manage_roles=True)
+    async def add(self, ctx: discord.ApplicationContext, role: discord.Role):
+        if not await self.check_role_hierarchy(ctx, role):
+            return
+
+        critical_permissions = [
+            'administrator', 'ban_members', 'kick_members', 'manage_channels',
+            'manage_guild', 'manage_messages', 'manage_roles', 'manage_webhooks',
+            'moderate_members'
+        ]
+        
+        has_critical_perms = any(getattr(role.permissions, perm) for perm in critical_permissions)
+        
+        if has_critical_perms:
+            embed = discord.Embed(
+                title="EzRoles - Warning",
+                description=f"⚠️ {role.mention} has moderation or admin permissions. Are you sure you want to add it as an autorole? New members will automatically receive these permissions.",
+                color=discord.Color.yellow()
+            )
+            embed.set_footer(text="Made by EzRoles.xyz")
+            view = ConfirmButton()
+            await ctx.respond(embed=embed, view=view, ephemeral=True)
+            
+            await view.wait()
+            
+            if view.value is None:
+                await ctx.edit(embed=discord.Embed(
+                    title="EzRoles - Autorole",
+                    description="Operation timed out.",
+                    color=discord.Color.red()
+                ), view=None)
+                return
+            elif not view.value:
+                await ctx.edit(embed=discord.Embed(
+                    title="EzRoles - Autorole",
+                    description="Operation cancelled.",
+                    color=discord.Color.red()
+                ), view=None)
+                return
+            
+            response_message = await self.add_autorole(ctx, role)
+            await ctx.edit(embed=response_message, view=None)
+        else:
+            response_message = await self.add_autorole(ctx, role)
+            await ctx.respond(embed=response_message, ephemeral=True)
 
     @autorole.command(name="remove", description="Remove a role from the autorole list.")
     @discord.default_permissions(manage_roles=True)
@@ -129,7 +174,7 @@ class AutoRole(commands.Cog):
                 for role_id in role_ids:
                     role = ctx.guild.get_role(role_id)
                     if role:
-                        if role.tags and hasattr(role.tags, 'bot_id'):
+                        if self.is_bot_managed_role(role):
                             continue
                             
                         role_list.append(role.mention)
@@ -206,7 +251,7 @@ class AutoRole(commands.Cog):
                 if not role:
                     continue
                 
-                if role.tags and hasattr(role.tags, 'bot_id'):
+                if self.is_bot_managed_role(role):
                     continue
 
                 valid_role_ids.append(role_id)
@@ -222,7 +267,6 @@ class AutoRole(commands.Cog):
             if roles_to_add:
                 try:
                     await member.add_roles(*roles_to_add, reason="AutoRole")
-                    logger.info(f"Autoroles added to {member.display_name}: {', '.join([r.name for r in roles_to_add])}")
                 except discord.Forbidden:
                     logger.error(f"No permission to add roles to {member.display_name}")
                 except discord.HTTPException as e:
@@ -233,6 +277,23 @@ class AutoRole(commands.Cog):
 
         except Exception as e:
             logger.error(f"Error adding auto-roles: {e}")
+
+
+class ConfirmButton(discord.ui.View):
+    def __init__(self, timeout=60):
+        super().__init__(timeout=timeout)
+        self.value = None
+
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
+    async def confirm(self, button: discord.ui.Button, interaction: discord.Interaction):
+        self.value = True
+        self.stop()
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
+    async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
+        self.value = False
+        self.stop()
+
 
 def setup(bot: discord.Bot):
     bot.add_cog(AutoRole(bot))

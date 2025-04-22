@@ -11,6 +11,9 @@ class RoleBackup(commands.Cog):
         self.logger = get_logger("RoleBackup")
         self.db = DatabaseManager("database/rolebackup.db")
 
+    def is_bot_managed_role(self, role: discord.Role) -> bool:
+        return role.tags is not None and role.tags.is_bot_managed()
+
     backup = SlashCommandGroup("backup", "Manage role backup.", default_member_permissions=discord.Permissions(administrator=True))
     
     @commands.Cog.listener()
@@ -54,7 +57,7 @@ class RoleBackup(commands.Cog):
             if role.is_default():
                 continue
                 
-            if role.tags and hasattr(role.tags, 'bot_id'):
+            if self.is_bot_managed_role(role):
                 continue
                 
             role_data = {
@@ -151,7 +154,7 @@ class RoleBackup(commands.Cog):
                 role_id = role_data['id']
                 
                 current_role = current_roles.get(role_id)
-                if current_role and current_role.tags and hasattr(current_role.tags, 'bot_id'):
+                if current_role and self.is_bot_managed_role(current_role):
                     continue
                 
                 if role_id in current_roles:
@@ -184,7 +187,7 @@ class RoleBackup(commands.Cog):
             for role_data in sorted(backup_data['roles'], key=lambda r: r['position'], reverse=True):
                 role_id = role_data['id']
                 if role_id in current_roles:
-                    if current_roles[role_id].tags and hasattr(current_roles[role_id].tags, 'bot_id'):
+                    if self.is_bot_managed_role(current_roles[role_id]):
                         continue
                         
                     try:
