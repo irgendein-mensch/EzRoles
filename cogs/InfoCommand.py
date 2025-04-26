@@ -15,7 +15,8 @@ class InfoCommand(commands.Cog):
                 "**Current Features:**\n"
                 "• AutoRoles - Automatically assign roles to new members\n"
                 "• StickyRoles - Restore roles when users rejoin\n"
-                "• RoleBackup - Backup and restore your server's role setup\n\n"
+                "• RoleBackup - Backup and restore your server's role setup\n"
+                "• StatusRoles - Assign roles based on user status text\n\n"
                 "⚠️ **Note:** This bot is still under active development. More features will be added soon!\n"
                 "🔹 **Open Source:** You can contribute on [GitHub](https://github.com/irgendein-mensch/EzRoles)"
             ),
@@ -45,7 +46,8 @@ class CategorySelect(discord.ui.Select):
             discord.SelectOption(label="EzRoles", description="General informations", value="category_0"),
             discord.SelectOption(label="AutoRoles", description="Automatically assign roles", value="category_1"),
             discord.SelectOption(label="StickyRoles", description="Reassign roles when users rejoin", value="category_2"),
-            discord.SelectOption(label="RoleBackup", description="Backup and restore roles", value="category_3")
+            discord.SelectOption(label="RoleBackup", description="Backup and restore roles", value="category_3"),
+            discord.SelectOption(label="StatusRoles", description="Assign roles based on status text", value="category_4")
         ]
         super().__init__(placeholder="Choose a category...", min_values=1, max_values=1, options=options, custom_id="category_select")
 
@@ -60,7 +62,8 @@ class CategorySelect(discord.ui.Select):
                     "**Current Features:**\n"
                     "• AutoRoles - Automatically assign roles to new members\n"
                     "• StickyRoles - Restore roles when users rejoin\n"
-                    "• RoleBackup - Backup and restore your server's role setup\n\n"
+                    "• RoleBackup - Backup and restore your server's role setup\n"
+                    "• StatusRoles - Assign roles based on user status text\n\n"
                     "⚠️ **Note:** This bot is still under active development. More features will be added soon!\n"
                     "🔹 **Open Source:** You can contribute on [GitHub](https://github.com/irgendein-mensch/EzRoles)"
                 ),
@@ -126,6 +129,29 @@ class CategorySelect(discord.ui.Select):
             embed.add_field(
                 name="⚠️ Important Note",
                 value="The bot can only restore roles that are **below its highest role** in the hierarchy and for which it has **manage roles permission**.", 
+                inline=False)
+
+        elif value == "category_4":
+            embed = discord.Embed(
+                title="🔍 StatusRoles",
+                description="Automatically assign roles to members based on text in their custom status.",
+                color=discord.Color.purple()
+            )
+            embed.add_field(
+                name="</statusrole add:1359678345230418071>",
+                value="🔹 *Add a role to be assigned when a specific text appears in users' status.*", inline=False)
+            embed.add_field(
+                name="</statusrole remove:1359678345230418071>",
+                value="🔹 *Remove a status role mapping (either specific text or all mappings for a role).*", inline=False)
+            embed.add_field(
+                name="</statusrole list:1359678345230418071>",
+                value="🔹 *List all configured status role mappings for this server.*", inline=False)
+            embed.add_field(
+                name="</statusrole clear:1359678345230418071>",
+                value="🔹 *Remove all status role mappings for this server (admin only).*", inline=False)
+            embed.add_field(
+                name="ℹ️ How it works",
+                value="The bot checks members' custom status every 10 minutes and when their status changes. If the status contains the configured text (case insensitive), the role will be assigned.", 
                 inline=False)
 
         embed.set_footer(text="Made by EzRoles.xyz")
