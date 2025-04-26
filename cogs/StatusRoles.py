@@ -54,15 +54,21 @@ class StatusRole(commands.Cog):
 
     async def add_status_role_mapping(self, ctx: discord.ApplicationContext, role: discord.Role, status_text: str):
         try:
-            is_new = await self.db.add_statusrole(ctx.guild.id, role.id, status_text, ctx.author.id)
-
-            if not is_new:
+            existing_mappings = await self.db.get_statusroles(ctx.guild.id)
+            if existing_mappings:
+                await self.db.clear_statusroles(ctx.guild.id)
+                
+                old_role = ctx.guild.get_role(existing_mappings[0]['role_id'])
+                old_text = existing_mappings[0]['status_text']
+                
                 embed = discord.Embed(
                     title="EzRoles - StatusRole",
-                    description=f"{role.mention} is already configured with this status text.",
-                    color=discord.Color.yellow()
+                    description=f"Replaced previous status role mapping ({old_role.mention} for \"{old_text}\") with new mapping: {role.mention} for \"{status_text}\".",
+                    color=discord.Color.green()
                 )
             else:
+                await self.db.add_statusrole(ctx.guild.id, role.id, status_text, ctx.author.id)
+                
                 embed = discord.Embed(
                     title="EzRoles - StatusRole",
                     description=f"{role.mention} will now be assigned to members with \"{status_text}\" in their custom status.",
@@ -91,58 +97,43 @@ class StatusRole(commands.Cog):
                 if not status_roles:
                     continue
                 
-                valid_role_ids = []
-                mappings = []
+                mapping = status_roles[0]
+                role_id, status_text = mapping['role_id'], mapping['status_text']
+                role = guild.get_role(role_id)
                 
-                for mapping in status_roles:
-                    role_id, status_text = mapping['role_id'], mapping['status_text']
-                    role = guild.get_role(role_id)
-                    
-                    if role and not self.is_bot_managed_role(role):
-                        valid_role_ids.append(role_id)
-                        mappings.append({
-                            'role': role,
-                            'status_text': status_text
-                        })
+                if not role or self.is_bot_managed_role(role):
+                    await self.db.clear_statusroles(guild.id)
+                    continue
                 
-                if len(valid_role_ids) < len(status_roles):
-                    await self.db.remove_nonexisting_statusroles(guild.id, valid_role_ids)
-                
-                if not mappings:
+                if guild.me.top_role <= role or not guild.me.guild_permissions.manage_roles:
                     continue
                 
                 for member in guild.members:
                     if member.bot:
                         continue
                     
-                    for mapping in mappings:
-                        role = mapping['role']
-                        status_text = mapping['status_text'].lower()
-                        
-                        has_status = any(
-                            isinstance(activity, discord.CustomActivity) and 
-                            activity.state and 
-                            status_text in activity.state.lower()
-                            for activity in member.activities
-                        )
-                        
-                        if has_status and role not in member.roles:
-                            if guild.me.top_role > role and guild.me.guild_permissions.manage_roles:
-                                try:
-                                    await member.add_roles(role, reason="StatusRole - Status matches criteria")
-                                except discord.Forbidden:
-                                    logger.error(f"No permission to add role {role.name} to {member.display_name}")
-                                except Exception as e:
-                                    logger.error(f"Error adding role {role.name} to {member.display_name}: {e}")
-                        
-                        elif not has_status and role in member.roles:
-                            if guild.me.top_role > role and guild.me.guild_permissions.manage_roles:
-                                try:
-                                    await member.remove_roles(role, reason="StatusRole - Status no longer matches")
-                                except discord.Forbidden:
-                                    logger.error(f"No permission to remove role {role.name} from {member.display_name}")
-                                except Exception as e:
-                                    logger.error(f"Error removing role {role.name} from {member.display_name}: {e}")
+                    has_status = any(
+                        isinstance(activity, discord.CustomActivity) and 
+                        activity.state and 
+                        status_text.lower() in activity.state.lower()
+                        for activity in member.activities
+                    )
+                    
+                    if has_status and role not in member.roles:
+                        try:
+                            await member.add_roles(role, reason="StatusRole - Status matches criteria")
+                        except discord.Forbidden:
+                            logger.error(f"No permission to add role {role.name} to {member.display_name}")
+                        except Exception as e:
+                            logger.error(f"Error adding role {role.name} to {member.display_name}: {e}")
+                    
+                    elif not has_status and role in member.roles:
+                        try:
+                            await member.remove_roles(role, reason="StatusRole - Status no longer matches")
+                        except discord.Forbidden:
+                            logger.error(f"No permission to remove role {role.name} from {member.display_name}")
+                        except Exception as e:
+                            logger.error(f"Error removing role {role.name} from {member.display_name}: {e}")
         
         except Exception as e:
             logger.error(f"Error in status_check task: {e}")
@@ -163,40 +154,42 @@ class StatusRole(commands.Cog):
             if not status_roles:
                 return
             
-            for mapping in status_roles:
-                role_id, status_text = mapping['role_id'], mapping['status_text']
-                role = guild.get_role(role_id)
-                
-                if not role or self.is_bot_managed_role(role):
-                    continue
-                
-                has_status = any(
-                    isinstance(activity, discord.CustomActivity) and 
-                    activity.state and 
-                    status_text.lower() in activity.state.lower()
-                    for activity in after.activities
-                )
-                
-                if has_status and role not in after.roles:
-                    if guild.me.top_role > role and guild.me.guild_permissions.manage_roles:
-                        try:
-                            await after.add_roles(role, reason="StatusRole - Status matches criteria")
-                        except Exception as e:
-                            logger.error(f"Error adding role {role.name} to {after.display_name}: {e}")
-                
-                elif not has_status and role in after.roles:
-                    if guild.me.top_role > role and guild.me.guild_permissions.manage_roles:
-                        try:
-                            await after.remove_roles(role, reason="StatusRole - Status no longer matches")
-                        except Exception as e:
-                            logger.error(f"Error removing role {role.name} from {after.display_name}: {e}")
+            mapping = status_roles[0]
+            role_id, status_text = mapping['role_id'], mapping['status_text']
+            role = guild.get_role(role_id)
+            
+            if not role or self.is_bot_managed_role(role):
+                await self.db.clear_statusroles(guild.id)
+                return
+            
+            if guild.me.top_role <= role or not guild.me.guild_permissions.manage_roles:
+                return
+            
+            has_status = any(
+                isinstance(activity, discord.CustomActivity) and 
+                activity.state and 
+                status_text.lower() in activity.state.lower()
+                for activity in after.activities
+            )
+            
+            if has_status and role not in after.roles:
+                try:
+                    await after.add_roles(role, reason="StatusRole - Status matches criteria")
+                except Exception as e:
+                    logger.error(f"Error adding role {role.name} to {after.display_name}: {e}")
+            
+            elif not has_status and role in after.roles:
+                try:
+                    await after.remove_roles(role, reason="StatusRole - Status no longer matches")
+                except Exception as e:
+                    logger.error(f"Error removing role {role.name} from {after.display_name}: {e}")
         
         except Exception as e:
             logger.error(f"Error in on_presence_update: {e}")
 
     statusrole = SlashCommandGroup("statusrole", "Manage status roles.", default_member_permissions=discord.Permissions(administrator=True))
 
-    @statusrole.command(name="add", description="Add a role to be assigned when a specific text appears in users' status.")
+    @statusrole.command(name="add", description="Add a role to be assigned when a specific text appears in users' status. (Replaces any existing mapping)")
     @discord.default_permissions(manage_roles=True)
     async def add(self, ctx: discord.ApplicationContext, role: discord.Role, status_text: str):
         if not await self.check_role_hierarchy(ctx, role):
@@ -243,27 +236,26 @@ class StatusRole(commands.Cog):
             response_message = await self.add_status_role_mapping(ctx, role, status_text)
             await ctx.respond(embed=response_message, ephemeral=True)
 
-    @statusrole.command(name="remove", description="Remove a status role mapping.")
+    @statusrole.command(name="remove", description="Remove the current status role mapping.")
     @discord.default_permissions(manage_roles=True)
-    async def remove(self, ctx: discord.ApplicationContext, role: discord.Role, status_text: str = None):
+    async def remove(self, ctx: discord.ApplicationContext):
         try:
-            if status_text:
-                was_removed = await self.db.remove_statusrole(ctx.guild.id, role.id, status_text)
-                description = f"Status role mapping for {role.mention} with text \"{status_text}\" has been removed."
-            else:
-                was_removed = await self.db.remove_all_statusroles_for_role(ctx.guild.id, role.id)
-                description = f"All status mappings for {role.mention} have been removed."
-
-            if not was_removed:
+            status_roles = await self.db.get_statusroles(ctx.guild.id)
+            
+            if not status_roles:
                 embed = discord.Embed(
                     title="EzRoles - StatusRole",
-                    description=f"No matching status role configuration found for {role.mention}.",
+                    description="No status role mapping exists for this server.",
                     color=discord.Color.yellow()
                 )
             else:
+                count = await self.db.clear_statusroles(ctx.guild.id)
+                role = ctx.guild.get_role(status_roles[0]['role_id'])
+                status_text = status_roles[0]['status_text']
+                
                 embed = discord.Embed(
                     title="EzRoles - StatusRole",
-                    description=description,
+                    description=f"Removed status role mapping: {role.mention} for \"{status_text}\".",
                     color=discord.Color.green()
                 )
 
@@ -280,33 +272,24 @@ class StatusRole(commands.Cog):
             embed.set_footer(text="Made by EzRoles.xyz")
             await ctx.respond(embed=embed, ephemeral=True)
 
-    @statusrole.command(name="list", description="List all status role mappings.")
+    @statusrole.command(name="view", description="View the current status role mapping.")
     @discord.default_permissions(manage_roles=True)
-    async def list(self, ctx: discord.ApplicationContext):
+    async def view(self, ctx: discord.ApplicationContext):
         try:
             status_roles = await self.db.get_statusroles(ctx.guild.id)
 
             if not status_roles:
-                description = "No status roles are configured."
+                description = "No status role is configured for this server."
             else:
-                role_mappings = []
-                valid_role_ids = []
-
-                for mapping in status_roles:
-                    role_id, status_text = mapping['role_id'], mapping['status_text']
-                    role = ctx.guild.get_role(role_id)
-                    
-                    if role and not self.is_bot_managed_role(role):
-                        role_mappings.append(f"{role.mention}: \"{status_text}\"")
-                        valid_role_ids.append(role_id)
-
-                if len(valid_role_ids) < len(status_roles):
-                    await self.db.remove_nonexisting_statusroles(ctx.guild.id, valid_role_ids)
-
-                if not role_mappings:
-                    description = "No valid status roles were found. All outdated entries were removed."
+                mapping = status_roles[0]
+                role_id, status_text = mapping['role_id'], mapping['status_text']
+                role = ctx.guild.get_role(role_id)
+                
+                if not role or self.is_bot_managed_role(role):
+                    await self.db.clear_statusroles(ctx.guild.id)
+                    description = "The configured status role was invalid and has been removed."
                 else:
-                    description = "Status role mappings:\n" + "\n".join(role_mappings)
+                    description = f"Current status role mapping:\n{role.mention}: \"{status_text}\""
 
             embed = discord.Embed(
                 title="EzRoles - StatusRole",
@@ -317,31 +300,7 @@ class StatusRole(commands.Cog):
             await ctx.respond(embed=embed, ephemeral=True)
 
         except Exception as e:
-            logger.error(f"Error listing status roles: {e}")
-            embed = discord.Embed(
-                title="EzRoles - Error",
-                description="An error occurred. Please try again later.",
-                color=discord.Color.red()
-            )
-            embed.set_footer(text="Made by EzRoles.xyz")
-            await ctx.respond(embed=embed, ephemeral=True)
-
-    @statusrole.command(name="clear", description="Remove all status role mappings for this server.")
-    @discord.default_permissions(administrator=True)
-    async def clear(self, ctx: discord.ApplicationContext):
-        try:
-            count = await self.db.clear_statusroles(ctx.guild.id)
-
-            embed = discord.Embed(
-                title="EzRoles - StatusRole",
-                description=f"All {count} status role mappings have been deleted.",
-                color=discord.Color.green()
-            )
-            embed.set_footer(text="Made by EzRoles.xyz")
-            await ctx.respond(embed=embed, ephemeral=True)
-
-        except Exception as e:
-            logger.error(f"Error clearing status roles: {e}")
+            logger.error(f"Error viewing status role: {e}")
             embed = discord.Embed(
                 title="EzRoles - Error",
                 description="An error occurred. Please try again later.",
