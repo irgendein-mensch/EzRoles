@@ -25,6 +25,17 @@ class DatabaseManager:
                         PRIMARY KEY (guild_id, role_id)
                     )
                 ''')
+            elif self.db_type == "statusrole":
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS statusroles (
+                        guild_id INTEGER,
+                        role_id INTEGER,
+                        status_text TEXT,
+                        added_by INTEGER,
+                        added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (guild_id, role_id, status_text)
+                    )
+                ''')
             elif self.db_type == "stickyroles":
                 await db.execute('''
                     CREATE TABLE IF NOT EXISTS guild_settings (
@@ -55,7 +66,6 @@ class DatabaseManager:
             
             await db.commit()
 
-    
     async def add_autorole(self, guild_id, role_id, author_id):
         if self.db_type != "autorole":
             logger.error(f"Attempted to use autorole method on {self.db_type} database")
@@ -133,7 +143,99 @@ class DatabaseManager:
             )
             await db.commit()
             return cursor.rowcount
+    
+    async def add_statusrole(self, guild_id, role_id, status_text, author_id):
+        if self.db_type != "statusrole":
+            logger.error(f"Attempted to use statusrole method on {self.db_type} database")
+            return False
             
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "SELECT role_id FROM statusroles WHERE guild_id = ? AND role_id = ? AND status_text = ?",
+                (guild_id, role_id, status_text)
+            )
+            existing_role = await cursor.fetchone()
+            
+            if existing_role:
+                return False
+            
+            await db.execute(
+                "INSERT INTO statusroles (guild_id, role_id, status_text, added_by) VALUES (?, ?, ?, ?)",
+                (guild_id, role_id, status_text, author_id)
+            )
+            await db.commit()
+            return True
+
+    async def remove_statusrole(self, guild_id, role_id, status_text):
+        if self.db_type != "statusrole":
+            logger.error(f"Attempted to use statusrole method on {self.db_type} database")
+            return False
+            
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "DELETE FROM statusroles WHERE guild_id = ? AND role_id = ? AND status_text = ?",
+                (guild_id, role_id, status_text)
+            )
+            await db.commit()
+            return cursor.rowcount > 0
+
+    async def remove_all_statusroles_for_role(self, guild_id, role_id):
+        if self.db_type != "statusrole":
+            logger.error(f"Attempted to use statusrole method on {self.db_type} database")
+            return False
+            
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "DELETE FROM statusroles WHERE guild_id = ? AND role_id = ?",
+                (guild_id, role_id)
+            )
+            await db.commit()
+            return cursor.rowcount > 0
+
+    async def get_statusroles(self, guild_id):
+        if self.db_type != "statusrole":
+            logger.error(f"Attempted to use statusrole method on {self.db_type} database")
+            return []
+            
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT role_id, status_text FROM statusroles WHERE guild_id = ?",
+                (guild_id,)
+            )
+            roles = await cursor.fetchall()
+            return [{'role_id': role['role_id'], 'status_text': role['status_text']} for role in roles]
+
+    async def clear_statusroles(self, guild_id):
+        if self.db_type != "statusrole":
+            logger.error(f"Attempted to use statusrole method on {self.db_type} database")
+            return 0
+            
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "DELETE FROM statusroles WHERE guild_id = ?",
+                (guild_id,)
+            )
+            await db.commit()
+            return cursor.rowcount
+
+    async def remove_nonexisting_statusroles(self, guild_id, valid_role_ids):
+        if self.db_type != "statusrole":
+            logger.error(f"Attempted to use statusrole method on {self.db_type} database")
+            return 0
+            
+        if not valid_role_ids:
+            return await self.clear_statusroles(guild_id)
+        
+        placeholders = ','.join(['?'] * len(valid_role_ids))
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                f"DELETE FROM statusroles WHERE guild_id = ? AND role_id NOT IN ({placeholders})",
+                (guild_id, *valid_role_ids)
+            )
+            await db.commit()
+            return cursor.rowcount
+    
     async def set_feature_status(self, guild_id, is_enabled):
         if self.db_type != "stickyroles":
             logger.error(f"Attempted to use stickyroles method on {self.db_type} database")
@@ -229,7 +331,6 @@ class DatabaseManager:
             )
             await db.commit()
             return cursor.rowcount
-    
     
     async def save_role_backup(self, guild_id, user_id, roles_data):
         if self.db_type != "rolebackup":
