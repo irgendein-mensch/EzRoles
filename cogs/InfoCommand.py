@@ -8,17 +8,21 @@ class InfoCommand(commands.Cog):
 
     @discord.slash_command(name="info", description="Get information about the bot.")
     async def info(self, ctx: discord.ApplicationContext):
+        total_users = sum(guild.member_count for guild in self.bot.guilds)
+        
         embed = discord.Embed(
             title="📌 EzRoles Bot – General Info",
             description=(
-                "EzRoles.xyz is a free open-source Discord bot that helps you manage your server's roles easily.\n\n"
-                "**Current Features:**\n"
-                "• AutoRoles - Automatically assign roles to new members\n"
-                "• StickyRoles - Restore roles when users rejoin\n"
-                "• RoleBackup - Backup and restore your server's role setup\n"
-                "• StatusRoles - Assign roles based on user status text\n\n"
-                "⚠️ **Note:** This bot is still under active development. More features will be added soon!\n"
-                "🔹 **Open Source:** You can contribute on [GitHub](https://github.com/irgendein-mensch/EzRoles)"
+                f"EzRoles.xyz is a free open-source Discord bot that helps you manage your server's roles easily.\n\n"
+                f"**Current Stats:**\n"
+                f"• Users: {total_users:,} members across all servers\n\n"
+                f"**Current Features:**\n"
+                f"• AutoRoles - Automatically assign roles to new members\n"
+                f"• StickyRoles - Restore roles when users rejoin\n"
+                f"• RoleBackup - Backup and restore your server's role setup\n"
+                f"• StatusRoles - Assign roles based on user status text\n\n"
+                f"⚠️ **Note:** This bot is still under active development. More features will be added soon!\n"
+                f"🔹 **Open Source:** You can contribute on [GitHub](https://github.com/irgendein-mensch/EzRoles)"
             ),
             color=discord.Color.greyple()
         )
@@ -55,17 +59,21 @@ class CategorySelect(discord.ui.Select):
         value = self.values[0]
 
         if value == "category_0":
+            total_users = sum(guild.member_count for guild in interaction.client.guilds)
+            
             embed = discord.Embed(
                 title="📌 EzRoles – General Info",
                 description=(
-                    "EzRoles.xyz is a free open-source Discord bot that helps you manage your server's roles easily.\n\n"
-                    "**Current Features:**\n"
-                    "• AutoRoles - Automatically assign roles to new members\n"
-                    "• StickyRoles - Restore roles when users rejoin\n"
-                    "• RoleBackup - Backup and restore your server's role setup\n"
-                    "• StatusRoles - Assign roles based on user status text\n\n"
-                    "⚠️ **Note:** This bot is still under active development. More features will be added soon!\n"
-                    "🔹 **Open Source:** You can contribute on [GitHub](https://github.com/irgendein-mensch/EzRoles)"
+                    f"EzRoles.xyz is a free open-source Discord bot that helps you manage your server's roles easily.\n\n"
+                    f"**Current Stats:**\n"
+                    f"• Users: {total_users:,} members across all servers\n\n"
+                    f"**Current Features:**\n"
+                    f"• AutoRoles - Automatically assign roles to new members\n"
+                    f"• StickyRoles - Restore roles when users rejoin\n"
+                    f"• RoleBackup - Backup and restore your server's role setup\n"
+                    f"• StatusRoles - Assign roles based on user status text\n\n"
+                    f"⚠️ **Note:** This bot is still under active development. More features will be added soon!\n"
+                    f"🔹 **Open Source:** You can contribute on [GitHub](https://github.com/irgendein-mensch/EzRoles)"
                 ),
                 color=discord.Color.greyple()
             )
